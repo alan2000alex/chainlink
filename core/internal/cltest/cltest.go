@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1230,4 +1231,18 @@ func MakeRoundStateReturnData(
 	data = append(data, utils.EVMWordUint64(paymentAmount)...)
 	data = append(data, utils.EVMWordUint64(oracleCount)...)
 	return hexutil.Encode(data)
+}
+
+// EthereumLog represents the return value of the geth contract-wrapper
+// Filter<LogName> functions.
+type EthereumLog interface{ Next() bool }
+
+// GetLogs extracts the logs in an EthereumLog into a list
+func GetLogs(logs EthereumLog) []interface{} {
+	var rv []interface{}
+	for logs.Next() {
+		log := reflect.Indirect(reflect.ValueOf(logs)).FieldByName("Event").Interface()
+		rv = append(rv, log)
+	}
+	return rv
 }
