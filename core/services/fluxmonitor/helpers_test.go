@@ -15,7 +15,7 @@ import (
 )
 
 func ExportedSetCheckerFactory(fm Service, fac DeviationCheckerFactory) {
-	impl := fm.(*concreteFluxMonitor)
+	impl := fm.(*ConcreteFluxMonitor)
 	impl.checkerFactory = fac
 }
 
