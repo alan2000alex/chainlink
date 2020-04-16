@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -31,6 +32,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/utils"
 	"github.com/smartcontractkit/chainlink/core/web"
 
+	"github.com/DATA-DOG/go-txdb"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gin-gonic/gin"
@@ -74,6 +76,13 @@ func init() {
 	gomega.SetDefaultEventuallyTimeout(3 * time.Second)
 	lvl := logLevelFromEnv()
 	logger.SetLogger(CreateTestLogger(lvl))
+	// Register txdb as dialect wrapping postgres
+	// See: DialectTransactionWrappedPostgres
+	config := orm.NewConfig()
+	if config.DatabaseURL() == "" {
+		panic("You must set DATABASE_URL env var to point to your test database. HINT: Try DATABASE_URL=postgresql://postgres@localhost:5432/chainlink_test?sslmode=disable")
+	}
+	txdb.Register("cloudsqlpostgres", "postgres", config.DatabaseURL())
 }
 
 func logLevelFromEnv() zapcore.Level {
@@ -92,27 +101,40 @@ type TestConfig struct {
 }
 
 // NewConfig returns a new TestConfig
-func NewConfig(t testing.TB) (*TestConfig, func()) {
+func NewConfig(t testing.TB, options ...interface{}) (*TestConfig, func()) {
 	t.Helper()
 
 	wsserver, cleanup := newWSServer()
-	return NewConfigWithWSServer(t, wsserver), cleanup
+	return NewConfigWithWSServer(t, wsserver, options...), cleanup
+}
+
+func newAdvisoryLockID() int64 {
+	return rand.Int63()
 }
 
 // NewTestConfig returns a test configuration
-func NewTestConfig(t testing.TB) *TestConfig {
+func NewTestConfig(t testing.TB, options ...interface{}) *TestConfig {
 	t.Helper()
 
 	count := atomic.AddUint64(&storeCounter, 1)
 	rootdir := filepath.Join(RootDir, fmt.Sprintf("%d-%d", time.Now().UnixNano(), count))
 	rawConfig := orm.NewConfig()
+
+	rawConfig.Dialect = orm.DialectTransactionWrappedPostgres
+	for _, opt := range options {
+		switch v := opt.(type) {
+		case orm.DialectName:
+			rawConfig.Dialect = v
+		}
+	}
+
+	// Required to stop tests stepping on each other
+	rawConfig.AdvisoryLockID = newAdvisoryLockID()
 	rawConfig.Set("BRIDGE_RESPONSE_URL", "http://localhost:6688")
 	rawConfig.Set("ETH_CHAIN_ID", 3)
 	rawConfig.Set("CHAINLINK_DEV", true)
 	rawConfig.Set("ETH_GAS_BUMP_THRESHOLD", 3)
-	rawConfig.Set("LOG_LEVEL", orm.LogLevel{Level: zapcore.DebugLevel})
-	rawConfig.Set("LOG_SQL", false)
-	rawConfig.Set("LOG_SQL_MIGRATIONS", false)
+	rawConfig.Set("MIGRATE_DATABASE", false)
 	rawConfig.Set("MINIMUM_SERVICE_DURATION", "24h")
 	rawConfig.Set("MIN_INCOMING_CONFIRMATIONS", 1)
 	rawConfig.Set("MIN_OUTGOING_CONFIRMATIONS", 6)
@@ -125,10 +147,10 @@ func NewTestConfig(t testing.TB) *TestConfig {
 }
 
 // NewConfigWithWSServer return new config with specified wsserver
-func NewConfigWithWSServer(t testing.TB, wsserver *httptest.Server) *TestConfig {
+func NewConfigWithWSServer(t testing.TB, wsserver *httptest.Server, options ...interface{}) *TestConfig {
 	t.Helper()
 
-	config := NewTestConfig(t)
+	config := NewTestConfig(t, options...)
 	config.SetEthereumServer(wsserver)
 	return config
 }
@@ -223,8 +245,6 @@ func NewApplicationWithConfigAndKey(t testing.TB, tc *TestConfig, flags ...strin
 func NewApplicationWithConfig(t testing.TB, tc *TestConfig, flags ...string) (*TestApplication, func()) {
 	t.Helper()
 
-	cleanupDB := PrepareTestDB(tc)
-
 	ta := &TestApplication{t: t, connectedChannel: make(chan struct{}, 1)}
 	app := chainlink.NewApplication(tc.Config, func(app chainlink.Application) {
 		ta.connectedChannel <- struct{}{}
@@ -241,7 +261,6 @@ func NewApplicationWithConfig(t testing.TB, tc *TestConfig, flags ...string) (*T
 	ta.wsServer = tc.wsServer
 	return ta, func() {
 		require.NoError(t, ta.Stop())
-		cleanupDB()
 		require.True(t, ta.EthMock.AllCalled(), ta.EthMock.Remaining())
 	}
 }
@@ -406,19 +425,17 @@ func (ta *TestApplication) MustCreateJobRun(txHashBytes []byte, blockHashBytes [
 
 // NewStoreWithConfig creates a new store with given config
 func NewStoreWithConfig(config *TestConfig) (*strpkg.Store, func()) {
-	cleanupDB := PrepareTestDB(config)
 	s := strpkg.NewInsecureStore(config.Config, gracefulpanic.NewSignal())
 	return s, func() {
 		cleanUpStore(config.t, s)
-		cleanupDB()
 	}
 }
 
 // NewStore creates a new store
-func NewStore(t testing.TB) (*strpkg.Store, func()) {
+func NewStore(t testing.TB, options ...interface{}) (*strpkg.Store, func()) {
 	t.Helper()
 
-	c, cleanup := NewConfig(t)
+	c, cleanup := NewConfig(t, options...)
 	store, storeCleanup := NewStoreWithConfig(c)
 	return store, func() {
 		storeCleanup()

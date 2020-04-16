@@ -1105,7 +1105,7 @@ func TestORM_FindTxAttempt_CurrentAttempt(t *testing.T) {
 	txAttempt, err := store.FindTxAttempt(tx.Attempts[0].Hash)
 	require.NoError(t, err)
 
-	assert.Equal(t, tx.ID, txAttempt.ID)
+	assert.Equal(t, tx.ID, txAttempt.TxID)
 	assert.Equal(t, tx.Confirmed, txAttempt.Confirmed)
 	assert.Equal(t, tx.Hash, txAttempt.Hash)
 	assert.Equal(t, tx.GasPrice, txAttempt.GasPrice)
@@ -1161,7 +1161,7 @@ func TestORM_FindTxByAttempt_CurrentAttempt(t *testing.T) {
 	assert.Equal(t, createdTx.GasPrice, fetchedTx.GasPrice)
 	assert.Equal(t, createdTx.SentAt, fetchedTx.SentAt)
 
-	assert.Equal(t, createdTx.ID, fetchedTxAttempt.ID)
+	assert.Equal(t, createdTx.ID, fetchedTxAttempt.TxID)
 	assert.Equal(t, createdTx.Confirmed, fetchedTxAttempt.Confirmed)
 	assert.Equal(t, createdTx.Hash, fetchedTxAttempt.Hash)
 	assert.Equal(t, createdTx.GasPrice, fetchedTxAttempt.GasPrice)

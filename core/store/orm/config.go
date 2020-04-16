@@ -40,6 +40,8 @@ const readWritePerms = os.FileMode(0600)
 type Config struct {
 	viper           *viper.Viper
 	SecretGenerator SecretGenerator
+	Dialect         DialectName
+	AdvisoryLockID  int64
 	runtimeStore    *ORM
 }
 
@@ -143,6 +145,12 @@ func (c Config) DatabaseTimeout() time.Duration {
 // a properly formatted URL, with a valid scheme (postgres://)
 func (c Config) DatabaseURL() string {
 	return c.viper.GetString(EnvVarName("DatabaseURL"))
+}
+
+// MigrateDatabase automatically migrates the database on application startup
+// if set to true
+func (c Config) MigrateDatabase() bool {
+	return c.viper.GetBool(EnvVarName("MigrateDatabase"))
 }
 
 // DefaultMaxHTTPAttempts defines the limit for HTTP requests.
