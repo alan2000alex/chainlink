@@ -679,13 +679,9 @@ var (
 func (p *PollingDeviationChecker) checkEligibilityAndAggregatorFunding(roundState contracts.FluxAggregatorRoundState) error {
 	if !roundState.EligibleToSubmit {
 		return ErrNotEligible
-	}
-	if roundState.AvailableFunds.Cmp(roundState.PaymentAmount) < 0 {
+	} else if roundState.AvailableFunds.Cmp(roundState.PaymentAmount) < 0 {
 		return ErrUnderfunded
-	}
-	fee := roundState.PaymentAmount
-	minFee := p.store.Config.MinimumContractPayment().ToInt()
-	if fee.Cmp(minFee) < 0 {
+	} else if roundState.PaymentAmount.Cmp(p.store.Config.MinimumContractPayment().ToInt()) < 0 {
 		return ErrPaymentTooLow
 	} else if p.mostRecentSubmittedRoundID >= uint64(roundState.ReportableRoundID) {
 		return ErrAlreadySubmitted
