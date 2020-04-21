@@ -120,7 +120,6 @@ func NewConfig(t testing.TB, options ...interface{}) (*TestConfig, func()) {
 
 func newAdvisoryLockID() int64 {
 	id := rand.Int63()
-	fmt.Println("AdvisoryLockID: ", id)
 	return id
 }
 

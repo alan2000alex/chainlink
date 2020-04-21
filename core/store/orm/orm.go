@@ -115,14 +115,14 @@ func NewORM(uri string, timeout time.Duration, shutdownSignal gracefulpanic.Sign
 		return nil, errors.Wrap(err, "unable to init DB")
 	}
 
-	// TODO: This should probably move into initializeDatabase
-	// TODO: It may be advisable to set this mode in production as well?
+	// TODO: Should this move into initializeDatabase?
+	// TODO: Is it advisable to set this mode in production as well?
 	if dialect == DialectTransactionWrappedPostgres {
 		// Required to prevent phantom reads in overlapping tests
-		// err := db.Exec(`SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE`).Error
-		// if err != nil {
-		//     panic(err)
-		// }
+		err := db.Exec(`SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE`).Error
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	orm.db = db
