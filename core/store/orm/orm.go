@@ -91,9 +91,10 @@ func NewORM(uri string, timeout time.Duration, shutdownSignal gracefulpanic.Sign
 		// txdb it should have already been set at the point where we called
 		// txdb.Register
 		uri = models.NewID().String()
+	} else {
+		fmt.Println("BALLS postgres")
 	}
 
-	fmt.Println("balls dialect", dialect)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create ORM lock")
 	}
@@ -118,10 +119,10 @@ func NewORM(uri string, timeout time.Duration, shutdownSignal gracefulpanic.Sign
 	// TODO: It may be advisable to set this mode in production as well?
 	if dialect == DialectTransactionWrappedPostgres {
 		// Required to prevent phantom reads in overlapping tests
-		err := db.Exec(`SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE`).Error
-		if err != nil {
-			panic(err)
-		}
+		// err := db.Exec(`SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE`).Error
+		// if err != nil {
+		//     panic(err)
+		// }
 	}
 
 	orm.db = db

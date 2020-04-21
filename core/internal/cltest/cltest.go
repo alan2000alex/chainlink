@@ -82,7 +82,11 @@ func init() {
 	if config.DatabaseURL() == "" {
 		panic("You must set DATABASE_URL env var to point to your test database. HINT: Try DATABASE_URL=postgresql://postgres@localhost:5432/chainlink_test?sslmode=disable")
 	}
-	txdb.Register("cloudsqlpostgres", "postgres", config.DatabaseURL())
+	// Disable SavePoints because they cause random errors for a reason I cannot figure out
+	// Perhaps txdb's built-in transaction emulation is broken in some subtle way?
+	// NOTE: That this will cause transaction BEGIN/ROLLBACK to effectively be
+	// a no-op, this should have no negative impact on normal test operation
+	txdb.Register("cloudsqlpostgres", "postgres", config.DatabaseURL(), txdb.SavePointOption(nil))
 }
 
 func logLevelFromEnv() zapcore.Level {

@@ -29,7 +29,7 @@ func TestNewLockingStrategy(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(string(test.name), func(t *testing.T) {
-			rval, err := orm.NewLockingStrategy(test.dialectName, test.path)
+			rval, err := orm.NewLockingStrategy(test.dialectName, test.path, 42)
 			require.NoError(t, err)
 			rtype := reflect.ValueOf(rval).Type()
 			require.Equal(t, test.expect, rtype)
@@ -96,7 +96,7 @@ func TestPostgresLockingStrategy_CanBeReacquiredByNewNodeAfterDisconnect(t *test
 	require.NoError(t, dbErr)
 
 	orm2ShutdownSignal := gracefulpanic.NewSignal()
-	orm2, err := orm.NewORM(store.Config.DatabaseURL(), store.Config.DatabaseTimeout(), orm2ShutdownSignal, orm.DialectPostgres, tc.Config.AdvisoryLockID)
+	orm2, err := orm.NewORM(store.Config.DatabaseURL(), store.Config.DatabaseTimeout(), orm2ShutdownSignal, orm.DialectTransactionWrappedPostgres, tc.Config.AdvisoryLockID)
 	require.NoError(t, err)
 	defer orm2.Close()
 

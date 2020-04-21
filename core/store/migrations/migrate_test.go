@@ -33,7 +33,7 @@ func bootstrapORM(t *testing.T) (*orm.ORM, func()) {
 	require.NoError(t, os.MkdirAll(config.RootDir(), 0700))
 	migrationTestDBURL, err := cltest.DropAndCreateThrowawayTestDB(tc.DatabaseURL(), "migrations")
 	require.NoError(t, err)
-	orm, err := orm.NewORM(migrationTestDBURL, config.DatabaseTimeout(), gracefulpanic.NewSignal(), orm.DialectPostgres)
+	orm, err := orm.NewORM(migrationTestDBURL, config.DatabaseTimeout(), gracefulpanic.NewSignal(), orm.DialectPostgres, config.AdvisoryLockID)
 	require.NoError(t, err)
 	orm.SetLogging(true)
 
