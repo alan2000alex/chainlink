@@ -82,11 +82,17 @@ func init() {
 	if config.DatabaseURL() == "" {
 		panic("You must set DATABASE_URL env var to point to your test database. HINT: Try DATABASE_URL=postgresql://postgres@localhost:5432/chainlink_test?sslmode=disable")
 	}
-	// Disable SavePoints because they cause random errors for a reason I cannot figure out
+	// Disable SavePoints because they cause random errors for reasons I cannot fathom
 	// Perhaps txdb's built-in transaction emulation is broken in some subtle way?
 	// NOTE: That this will cause transaction BEGIN/ROLLBACK to effectively be
 	// a no-op, this should have no negative impact on normal test operation
 	txdb.Register("cloudsqlpostgres", "postgres", config.DatabaseURL(), txdb.SavePointOption(nil))
+
+	// Seed the random number generator, otherwise separate modules will take
+	// the same advisory locks when tested with `go test -p N` for N > 1
+	seed := time.Now().UTC().UnixNano()
+	logger.Debug("Using seed: %v", seed)
+	rand.Seed(seed)
 }
 
 func logLevelFromEnv() zapcore.Level {
@@ -113,7 +119,9 @@ func NewConfig(t testing.TB, options ...interface{}) (*TestConfig, func()) {
 }
 
 func newAdvisoryLockID() int64 {
-	return rand.Int63()
+	id := rand.Int63()
+	fmt.Println("AdvisoryLockID: ", id)
+	return id
 }
 
 // NewTestConfig returns a test configuration
