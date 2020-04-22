@@ -193,7 +193,7 @@ func TestLogBroadcaster_SkipsOldLogs(t *testing.T) {
 	sub.On("Unsubscribe").Return()
 	sub.On("Err").Return(nil)
 
-	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM)
+	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM, store.Config.LogBroadcasterCursorName)
 	lb.Start()
 
 	addr := cltest.NewAddress()
@@ -283,7 +283,7 @@ func TestLogBroadcaster_Register_ResubscribesToMostRecentlySeenBlock(t *testing.
 	listener1.On("OnDisconnect").Return()
 	listener2.On("OnDisconnect").Return()
 
-	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM)
+	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM, store.Config.LogBroadcasterCursorName)
 	lb.Start()                    // Subscribe #1
 	lb.Register(addr1, listener1) // Subscribe #2
 	chRawLogs := <-chchRawLogs
