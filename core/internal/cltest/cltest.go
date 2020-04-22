@@ -85,6 +85,7 @@ func init() {
 	// Perhaps txdb's built-in transaction emulation is broken in some subtle way?
 	// NOTE: That this will cause transaction BEGIN/ROLLBACK to effectively be
 	// a no-op, this should have no negative impact on normal test operation
+	// FIXME: Can SavePoints be enabled again now that deadlocks are fixed?
 	txdb.Register("cloudsqlpostgres", "postgres", config.DatabaseURL(), txdb.SavePointOption(nil))
 
 	// Seed the random number generator, otherwise separate modules will take
@@ -241,8 +242,23 @@ func NewApplication(t testing.TB, flags ...string) (*TestApplication, func()) {
 	}
 }
 
-// NewApplicationWithKey creates a new TestApplication along with a new config
-func NewApplicationWithKey(t testing.TB, flags ...string) (*TestApplication, func()) {
+// NewApplicationWithFixtureKey creates a new application with the given key
+// Careful not to use the same key in different tests, since this may result in
+// deadlocks when running tests concurrently (keys.address unique index)
+func NewApplicationWithFixtureKey(t testing.TB, keyStoreJSON string) (*TestApplication, func()) {
+	t.Helper()
+
+	config, cfgCleanup := NewConfig(t)
+	app, cleanup := NewApplicationWithConfig(t, config)
+	app.ImportKey(keyStoreJSON)
+	return app, func() {
+		cleanup()
+		cfgCleanup()
+	}
+}
+
+// NewApplicationWithRandomKey creates a new TestApplication along with a new config
+func NewApplicationWithRandomKey(t testing.TB, flags ...string) (*TestApplication, func()) {
 	t.Helper()
 
 	config, cfgCleanup := NewConfig(t)

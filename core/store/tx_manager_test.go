@@ -366,7 +366,7 @@ func TestTxManager_CreateTx_ErrPendingConnection(t *testing.T) {
 func TestTxManager_BumpGasUntilSafe_lessThanGasBumpThreshold(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -402,7 +402,7 @@ func TestTxManager_BumpGasUntilSafe_lessThanGasBumpThreshold(t *testing.T) {
 func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -439,7 +439,7 @@ func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold(t *testing.T) {
 func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold_bumpsGasMoreInCaseOfUnderpricedTransaction(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -491,7 +491,7 @@ func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold_bumpsGasMoreInCaseOfUnder
 func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold_returnsErrorIfMaxGasPriceIsReached(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -533,7 +533,7 @@ func TestTxManager_BumpGasUntilSafe_atGasBumpThreshold_returnsErrorIfMaxGasPrice
 func TestTxManager_BumpGasUntilSafe_exceedsGasBumpThreshold(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -570,7 +570,7 @@ func TestTxManager_BumpGasUntilSafe_exceedsGasBumpThreshold(t *testing.T) {
 func TestTxManager_BumpGasUntilSafe_confirmed(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 	app.EthMock.Context("app.Start()", func(meth *cltest.EthMock) {
 		meth.Register("eth_getTransactionCount", "0x1")
@@ -627,7 +627,7 @@ func TestTxManager_BumpGasUntilSafe_safe(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			app, cleanup := cltest.NewApplicationWithKey(t)
+			app, cleanup := cltest.NewApplicationWithRandomKey(t)
 			defer cleanup()
 			app.EthMock.Context("app.Start()", func(meth *cltest.EthMock) {
 				meth.Register("eth_getTransactionCount", "0x1")
@@ -673,7 +673,7 @@ func TestTxManager_BumpGasUntilSafe_safe(t *testing.T) {
 func TestTxManager_BumpGasUntilSafe_laterConfirmedTx(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 	app.EthMock.Context("app.Start()", func(meth *cltest.EthMock) {
 		meth.Register("eth_getTransactionCount", "0x1")
@@ -802,7 +802,7 @@ func TestTxManager_BumpGasUntilSafe_erroring(t *testing.T) {
 func TestTxManager_CheckAttempt(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -859,7 +859,7 @@ func TestTxManager_CheckAttempt(t *testing.T) {
 func TestTxManager_CheckAttempt_error(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	store := app.Store
@@ -1021,7 +1021,7 @@ func TestTxManager_WithdrawLink_HappyPath(t *testing.T) {
 
 func TestTxManager_WithdrawLink_Unconfigured_Oracle(t *testing.T) {
 	t.Parallel()
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 
 	nonce := uint64(256)
@@ -1139,7 +1139,7 @@ func TestTxManager_LogsETHAndLINKBalancesAfterSuccessfulTx(t *testing.T) {
 func TestTxManager_CreateTxWithGas(t *testing.T) {
 	t.Parallel()
 
-	app, cleanup := cltest.NewApplicationWithKey(t)
+	app, cleanup := cltest.NewApplicationWithRandomKey(t)
 	defer cleanup()
 	store := app.Store
 	config := store.Config
