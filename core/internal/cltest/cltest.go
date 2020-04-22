@@ -53,8 +53,6 @@ import (
 const (
 	// RootDir the root directory for cltest
 	RootDir = "/tmp/chainlink_test"
-	// APIEmail of the API user
-	APIEmail = "email@test.net"
 	// APIKey of the API user
 	APIKey = "2d25e62eaf9143e993acaf48691564b2"
 	// APISecret of the API user.
@@ -93,6 +91,12 @@ func init() {
 	seed := time.Now().UTC().UnixNano()
 	logger.Debug("Using seed: %v", seed)
 	rand.Seed(seed)
+}
+
+// APIEmail returns an email address for the given config
+// It must be different each time to avoid deadlocks on the user email unique index
+func APIEmail(id int64) string {
+	return fmt.Sprintf("email-%v@example.com", id)
 }
 
 func logLevelFromEnv() zapcore.Level {
@@ -141,6 +145,9 @@ func NewTestConfig(t testing.TB, options ...interface{}) *TestConfig {
 
 	// Required to stop tests stepping on each other
 	rawConfig.AdvisoryLockID = newAdvisoryLockID()
+	// Must be different in each test to prevent deadlock
+	rawConfig.LogBroadcasterCursorName = fmt.Sprintf("logBroadcaster_%v", rawConfig.AdvisoryLockID)
+
 	rawConfig.Set("BRIDGE_RESPONSE_URL", "http://localhost:6688")
 	rawConfig.Set("ETH_CHAIN_ID", 3)
 	rawConfig.Set("CHAINLINK_DEV", true)
@@ -338,7 +345,8 @@ func (ta *TestApplication) Stop() error {
 }
 
 func (ta *TestApplication) MustSeedUserSession() models.User {
-	mockUser := MustUser(APIEmail, Password)
+	email := APIEmail(ta.Config.AdvisoryLockID)
+	mockUser := MustUser(email, Password)
 	require.NoError(ta.t, ta.Store.SaveUser(&mockUser))
 	session := NewSession(APISessionID)
 	require.NoError(ta.t, ta.Store.SaveSession(&session))
@@ -348,7 +356,8 @@ func (ta *TestApplication) MustSeedUserSession() models.User {
 // MustSeedUserAPIKey creates and returns a User with their API Token Key and
 // Secret generated.
 func (ta *TestApplication) MustSeedUserAPIKey() models.User {
-	mockUser := MustUser(APIEmail, Password)
+	email := APIEmail(ta.Config.AdvisoryLockID)
+	mockUser := MustUser(email, Password)
 	apiToken := auth.Token{AccessKey: APIKey, Secret: APISecret}
 	require.NoError(ta.t, mockUser.SetAuthToken(&apiToken))
 	require.NoError(ta.t, ta.Store.SaveUser(&mockUser))

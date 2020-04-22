@@ -1043,6 +1043,7 @@ func (orm *ORM) BridgeTypes(offset int, limit int) ([]models.BridgeType, int, er
 // SaveUser saves the user.
 func (orm *ORM) SaveUser(user *models.User) error {
 	orm.MustEnsureAdvisoryLock()
+	logger.Error("BALLS!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	return orm.db.Save(user).Error
 }
 

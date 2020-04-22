@@ -703,7 +703,7 @@ func (m *MockAPIInitializer) Initialize(store *store.Store) (models.User, error)
 		return user, err
 	}
 	m.Count += 1
-	user := MustUser(APIEmail, Password)
+	user := MustUser(APIEmail(store.Config.AdvisoryLockID), Password)
 	return user, store.SaveUser(&user)
 }
 
@@ -733,7 +733,7 @@ func (m *MockSessionRequestBuilder) Build(string) (models.SessionRequest, error)
 	if m.Error != nil {
 		return models.SessionRequest{}, m.Error
 	}
-	return models.SessionRequest{Email: APIEmail, Password: Password}, nil
+	return models.SessionRequest{Email: "TODO: FIX ME!!", Password: Password}, nil
 }
 
 type mockSecretGenerator struct{}

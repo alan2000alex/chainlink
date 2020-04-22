@@ -37,10 +37,11 @@ type LogListener interface {
 }
 
 type logBroadcaster struct {
-	ethClient eth.Client
-	orm       *orm.ORM
-	cursor    models.LogCursor
-	connected bool
+	ethClient                eth.Client
+	orm                      *orm.ORM
+	cursor                   models.LogCursor
+	connected                bool
+	logBroadcasterCursorName string
 
 	listeners        map[common.Address]map[LogListener]struct{}
 	chAddListener    chan registration
@@ -79,19 +80,21 @@ func (sub managedSubscription) Unsubscribe() {
 	close(sub.chRawLogs)
 }
 
-func NewLogBroadcaster(ethClient eth.Client, orm *orm.ORM) LogBroadcaster {
+func NewLogBroadcaster(ethClient eth.Client, orm *orm.ORM, logBroadcasterCursorName string) LogBroadcaster {
 	return &logBroadcaster{
-		ethClient:        ethClient,
-		orm:              orm,
-		listeners:        make(map[common.Address]map[LogListener]struct{}),
-		chAddListener:    make(chan registration),
-		chRemoveListener: make(chan registration),
-		chStop:           make(chan struct{}),
-		chDone:           make(chan struct{}),
+		ethClient:                ethClient,
+		orm:                      orm,
+		logBroadcasterCursorName: logBroadcasterCursorName,
+		listeners:                make(map[common.Address]map[LogListener]struct{}),
+		chAddListener:            make(chan registration),
+		chRemoveListener:         make(chan registration),
+		chStop:                   make(chan struct{}),
+		chDone:                   make(chan struct{}),
 	}
 }
 
-const logBroadcasterCursorName = "logBroadcaster"
+// TODO: Move to config and randomly generate during test runs to avoid deadlocks
+// const logBroadcasterCursorName = "logBroadcaster"
 
 func (b *logBroadcaster) Start() {
 	// Grab the current on-chain block height
@@ -101,7 +104,7 @@ func (b *logBroadcaster) Start() {
 	}
 
 	// Grab the cursor from the DB
-	cursor, err := b.orm.FindLogCursor(logBroadcasterCursorName)
+	cursor, err := b.orm.FindLogCursor(b.logBroadcasterCursorName)
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		logger.Errorf("error fetching log cursor: %v", err)
 	}
@@ -221,7 +224,7 @@ func (b *logBroadcaster) notifyDisconnect() {
 
 func (b *logBroadcaster) updateLogCursor(blockIdx, logIdx uint64) {
 	b.cursor.Initialized = true
-	b.cursor.Name = logBroadcasterCursorName
+	b.cursor.Name = b.logBroadcasterCursorName
 	b.cursor.BlockIndex = blockIdx
 	b.cursor.LogIndex = logIdx
 

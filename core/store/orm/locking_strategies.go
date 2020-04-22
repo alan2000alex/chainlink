@@ -11,6 +11,7 @@ import (
 	"go.uber.org/multierr"
 )
 
+// TODO: Make sure this actually gets set in production!
 const productionPostgresAdvisoryLockID int64 = 1027321974924625846
 
 // NewLockingStrategy returns the locking strategy for a particular dialect
