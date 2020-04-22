@@ -47,7 +47,7 @@ func TestLogBroadcaster_ResubscribesOnAddOrRemoveContract(t *testing.T) {
 		Run(func(mock.Arguments) { unsubscribeCalls++ })
 	sub.On("Err").Return(nil)
 
-	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM)
+	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM, store.Config.LogBroadcasterCursorName)
 	lb.Start()
 
 	type registration struct {
@@ -113,7 +113,7 @@ func TestLogBroadcaster_BroadcastsToCorrectRecipients(t *testing.T) {
 	sub.On("Err").Return(nil)
 	sub.On("Unsubscribe").Return()
 
-	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM)
+	lb := ethsvc.NewLogBroadcaster(ethClient, store.ORM, store.Config.LogBroadcasterCursorName)
 	lb.Start()
 
 	addr1 := cltest.NewAddress()

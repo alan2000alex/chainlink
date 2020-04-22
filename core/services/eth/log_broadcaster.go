@@ -93,8 +93,9 @@ func NewLogBroadcaster(ethClient eth.Client, orm *orm.ORM, logBroadcasterCursorN
 	}
 }
 
-// TODO: Move to config and randomly generate during test runs to avoid deadlocks
-// const logBroadcasterCursorName = "logBroadcaster"
+// TODO: Make sure this gets set in production!
+//       Validate config somehow to ensure?
+const logBroadcasterCursorName = "logBroadcaster"
 
 func (b *logBroadcaster) Start() {
 	// Grab the current on-chain block height

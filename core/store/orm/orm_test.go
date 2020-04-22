@@ -807,8 +807,8 @@ func TestORM_FindUser(t *testing.T) {
 
 	store, cleanup := cltest.NewStore(t)
 	defer cleanup()
-	user1 := cltest.MustUser("test1@email1.net", "password1")
-	user2 := cltest.MustUser("test2@email2.net", "password2")
+	user1 := cltest.MustNewUser(t, "test1@email1.net", "password1")
+	user2 := cltest.MustNewUser(t, "test2@email2.net", "password2")
 	user2.CreatedAt = time.Now().Add(-24 * time.Hour)
 
 	require.NoError(t, store.SaveUser(&user1))
@@ -841,7 +841,7 @@ func TestORM_AuthorizedUserWithSession(t *testing.T) {
 			store, cleanup := cltest.NewStore(t)
 			defer cleanup()
 
-			user := cltest.MustUser("have@email", "password")
+			user := cltest.MustNewUser(t, "have@email", "password")
 			require.NoError(t, store.SaveUser(&user))
 
 			prevSession := cltest.NewSession("correctID")
@@ -871,7 +871,7 @@ func TestORM_DeleteUser(t *testing.T) {
 
 	store, cleanup := cltest.NewStore(t)
 	defer cleanup()
-	user := cltest.MustUser("test1@email1.net", "password1")
+	user := cltest.MustNewUser(t, "test1@email1.net", "password1")
 	require.NoError(t, store.SaveUser(&user))
 
 	_, err := store.DeleteUser()
@@ -886,7 +886,7 @@ func TestORM_DeleteUserSession(t *testing.T) {
 
 	store, cleanup := cltest.NewStore(t)
 	defer cleanup()
-	user := cltest.MustUser("test1@email1.net", "password1")
+	user := cltest.MustNewUser(t, "test2@email1.net", "password1")
 	require.NoError(t, store.SaveUser(&user))
 
 	session := models.NewSession()
@@ -906,26 +906,26 @@ func TestORM_DeleteUserSession(t *testing.T) {
 func TestORM_CreateSession(t *testing.T) {
 	t.Parallel()
 
+	store, cleanup := cltest.NewStore(t)
+	defer cleanup()
+
+	initial := cltest.MustRandomUser()
+	require.NoError(t, store.SaveUser(&initial))
+
 	tests := []struct {
 		name        string
 		email       string
 		password    string
 		wantSession bool
 	}{
-		{"correct", cltest.APIEmail, cltest.Password, true},
-		{"incorrect email", "bogus@town.org", cltest.Password, false},
-		{"incorrect pwd", cltest.APIEmail, "jamaicandundada", false},
+		{"initial", initial.Email, cltest.Password, true},
+		{"ininitial email", "bogus@town.org", cltest.Password, false},
+		{"ininitial pwd", initial.Email, "jamaicandundada", false},
 		{"incorrect both", "dudus@coke.ja", "jamaicandundada", false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			store, cleanup := cltest.NewStore(t)
-			defer cleanup()
-
-			initial := cltest.MustUser(cltest.APIEmail, cltest.Password)
-			require.NoError(t, store.SaveUser(&initial))
-
 			sessionRequest := models.SessionRequest{
 				Email:    test.email,
 				Password: test.password,
