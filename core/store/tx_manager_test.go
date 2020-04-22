@@ -211,7 +211,7 @@ func TestTxManager_CreateTx_AttemptErrorDoesNotIncrementNonce(t *testing.T) {
 	config, configCleanup := cltest.NewConfig(t)
 	defer configCleanup()
 
-	app, cleanup := cltest.NewApplicationWithConfigAndKey(t, config)
+	app, cleanup := cltest.NewApplicationWithConfigAndRandomKey(t, config)
 	defer cleanup()
 
 	store := app.Store
@@ -771,7 +771,7 @@ func TestTxManager_BumpGasUntilSafe_erroring(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			app, cleanup := cltest.NewApplicationWithConfigAndKey(t, config, cltest.NoRegisterGetBlockNumber)
+			app, cleanup := cltest.NewApplicationWithConfigAndRandomKey(t, config, cltest.NoRegisterGetBlockNumber)
 			defer cleanup()
 
 			store := app.Store
@@ -980,7 +980,7 @@ func TestTxManager_WithdrawLink_HappyPath(t *testing.T) {
 	defer configCleanup()
 	oca := common.HexToAddress("0xDEADB3333333F")
 	config.Set("ORACLE_CONTRACT_ADDRESS", &oca)
-	app, cleanup := cltest.NewApplicationWithConfigAndKey(t, config)
+	app, cleanup := cltest.NewApplicationWithConfigAndRandomKey(t, config)
 	defer cleanup()
 
 	txm := app.Store.TxManager

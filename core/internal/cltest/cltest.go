@@ -33,6 +33,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/web"
 
 	"github.com/DATA-DOG/go-txdb"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gin-gonic/gin"
@@ -144,10 +145,11 @@ func NewTestConfig(t testing.TB, options ...interface{}) *TestConfig {
 		}
 	}
 
-	// Required to stop tests stepping on each other
-	rawConfig.AdvisoryLockID = NewRandomInt64()
-	// Must be different in each test to prevent deadlock
-	rawConfig.LogBroadcasterCursorName = fmt.Sprintf("logBroadcaster_%v", rawConfig.AdvisoryLockID)
+	uniqueRandomID := NewRandomInt64()
+	// Unique advisory lock is required otherwise all tests will block each other
+	rawConfig.AdvisoryLockID = uniqueRandomID
+	// Cursor name must be different in each test to prevent deadlock
+	rawConfig.LogBroadcasterCursorName = fmt.Sprintf("logBroadcaster_%v", uniqueRandomID)
 
 	rawConfig.Set("BRIDGE_RESPONSE_URL", "http://localhost:6688")
 	rawConfig.Set("ETH_CHAIN_ID", 3)
@@ -193,6 +195,7 @@ type TestApplication struct {
 	connectedChannel chan struct{}
 	Started          bool
 	EthMock          *EthMock
+	Account          accounts.Account
 }
 
 func newWSServer() (*httptest.Server, func()) {
@@ -243,20 +246,30 @@ func NewApplicationWithKey(t testing.TB, flags ...string) (*TestApplication, fun
 	t.Helper()
 
 	config, cfgCleanup := NewConfig(t)
-	app, cleanup := NewApplicationWithConfigAndKey(t, config, flags...)
+	app, cleanup := NewApplicationWithConfigAndRandomKey(t, config, flags...)
 	return app, func() {
 		cleanup()
 		cfgCleanup()
 	}
 }
 
-// NewApplicationWithConfigAndKey creates a new TestApplication with the given testconfig
+// NewApplicationWithConfigAndRandomKey creates a new TestApplication with the given testconfig
 // it will also provide an unlocked account on the keystore
-func NewApplicationWithConfigAndKey(t testing.TB, tc *TestConfig, flags ...string) (*TestApplication, func()) {
+func NewApplicationWithConfigAndRandomKey(t testing.TB, tc *TestConfig, flags ...string) (*TestApplication, func()) {
 	t.Helper()
 
 	app, cleanup := NewApplicationWithConfig(t, tc, flags...)
-	app.ImportKey(key3cb8e3fd9d27e39a5e9e6852b0e96160061fd4ea)
+	// FIXME: We need to generate different, random, valid keys here.
+	// NewAccount consumes a large amount of entropy by requiring
+	// cryptographically secure random numbers which might cause test slowdowns
+	// on CI. Not sure how to manage this.
+	acct, err := app.Store.KeyStore.NewAccount(Password)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Account = acct
+	// fmt.Println(randomKey())
+	// app.ImportKey(randomKey())
 	return app, cleanup
 }
 

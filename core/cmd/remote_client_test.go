@@ -673,7 +673,7 @@ func setupWithdrawalsApplication(t *testing.T) (*cltest.TestApplication, func())
 	config, _ := cltest.NewConfig(t)
 	oca := common.HexToAddress("0xDEADB3333333F")
 	config.Set("ORACLE_CONTRACT_ADDRESS", &oca)
-	app, cleanup := cltest.NewApplicationWithConfigAndKey(t, config)
+	app, cleanup := cltest.NewApplicationWithConfigAndRandomKey(t, config)
 
 	nonce := "0x100"
 

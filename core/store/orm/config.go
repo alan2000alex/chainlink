@@ -38,12 +38,13 @@ const readWritePerms = os.FileMode(0600)
 // If you add an entry here which does not contain sensitive information, you
 // should also update presenters.ConfigWhitelist and cmd_test.TestClient_RunNodeShowsEnv.
 type Config struct {
-	viper                    *viper.Viper
-	SecretGenerator          SecretGenerator
+	viper           *viper.Viper
+	SecretGenerator SecretGenerator
+	runtimeStore    *ORM
+	// TODO: Need to set these options somewhere for production
 	Dialect                  DialectName
 	AdvisoryLockID           int64
 	LogBroadcasterCursorName string
-	runtimeStore             *ORM
 }
 
 var configFileNotFoundError = reflect.TypeOf(viper.ConfigFileNotFoundError{})

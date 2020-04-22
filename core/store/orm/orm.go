@@ -78,6 +78,7 @@ var (
 func NewORM(uri string, timeout time.Duration, shutdownSignal gracefulpanic.Signal, dialect DialectName, advisoryLockID int64) (*ORM, error) {
 	if dialect == "" {
 		// Postgres is the default
+		// TODO: Can we raise error here instead on empty string?
 		dialect = DialectPostgres
 	}
 	// Locking strategy for transaction wrapped postgres must use original URI
@@ -91,8 +92,6 @@ func NewORM(uri string, timeout time.Duration, shutdownSignal gracefulpanic.Sign
 		// txdb it should have already been set at the point where we called
 		// txdb.Register
 		uri = models.NewID().String()
-	} else {
-		fmt.Println("BALLS postgres")
 	}
 
 	if err != nil {
@@ -775,7 +774,6 @@ func (orm *ORM) GetLastNonce(address common.Address) (uint64, error) {
 	orm.MustEnsureAdvisoryLock()
 	var transaction models.Tx
 	rval := orm.db.Order("nonce desc").Where(`"from" = ?`, address).First(&transaction)
-	fmt.Println("rval", rval)
 	return transaction.Nonce, ignoreRecordNotFound(rval)
 }
 
@@ -1043,7 +1041,6 @@ func (orm *ORM) BridgeTypes(offset int, limit int) ([]models.BridgeType, int, er
 // SaveUser saves the user.
 func (orm *ORM) SaveUser(user *models.User) error {
 	orm.MustEnsureAdvisoryLock()
-	logger.Error("BALLS!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	return orm.db.Save(user).Error
 }
 
