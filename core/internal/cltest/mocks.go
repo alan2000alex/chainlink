@@ -686,8 +686,9 @@ func (ns NeverSleeper) After() time.Duration { return 0 * time.Microsecond }
 // Duration returns a duration
 func (ns NeverSleeper) Duration() time.Duration { return 0 * time.Microsecond }
 
-func MustUser(email, pwd string) models.User {
-	r, err := models.NewUser(email, pwd)
+func MustUser(id int64) models.User {
+	email := APIEmail(id)
+	r, err := models.NewUser(email, Password)
 	if err != nil {
 		logger.Panic(err)
 	}
@@ -703,7 +704,7 @@ func (m *MockAPIInitializer) Initialize(store *store.Store) (models.User, error)
 		return user, err
 	}
 	m.Count += 1
-	user := MustUser(APIEmail(store.Config.AdvisoryLockID), Password)
+	user := MustUser(store.Config.AdvisoryLockID)
 	return user, store.SaveUser(&user)
 }
 

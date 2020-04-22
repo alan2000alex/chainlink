@@ -122,7 +122,8 @@ func NewConfig(t testing.TB, options ...interface{}) (*TestConfig, func()) {
 	return NewConfigWithWSServer(t, wsserver, options...), cleanup
 }
 
-func newAdvisoryLockID() int64 {
+// TODO: Consider renaming?
+func NewRandomInt64() int64 {
 	id := rand.Int63()
 	return id
 }
@@ -144,7 +145,7 @@ func NewTestConfig(t testing.TB, options ...interface{}) *TestConfig {
 	}
 
 	// Required to stop tests stepping on each other
-	rawConfig.AdvisoryLockID = newAdvisoryLockID()
+	rawConfig.AdvisoryLockID = NewRandomInt64()
 	// Must be different in each test to prevent deadlock
 	rawConfig.LogBroadcasterCursorName = fmt.Sprintf("logBroadcaster_%v", rawConfig.AdvisoryLockID)
 
@@ -345,8 +346,7 @@ func (ta *TestApplication) Stop() error {
 }
 
 func (ta *TestApplication) MustSeedUserSession() models.User {
-	email := APIEmail(ta.Config.AdvisoryLockID)
-	mockUser := MustUser(email, Password)
+	mockUser := MustUser(ta.Config.AdvisoryLockID)
 	require.NoError(ta.t, ta.Store.SaveUser(&mockUser))
 	session := NewSession(APISessionID)
 	require.NoError(ta.t, ta.Store.SaveSession(&session))
@@ -356,8 +356,7 @@ func (ta *TestApplication) MustSeedUserSession() models.User {
 // MustSeedUserAPIKey creates and returns a User with their API Token Key and
 // Secret generated.
 func (ta *TestApplication) MustSeedUserAPIKey() models.User {
-	email := APIEmail(ta.Config.AdvisoryLockID)
-	mockUser := MustUser(email, Password)
+	mockUser := MustUser(ta.Config.AdvisoryLockID)
 	apiToken := auth.Token{AccessKey: APIKey, Secret: APISecret}
 	require.NoError(ta.t, mockUser.SetAuthToken(&apiToken))
 	require.NoError(ta.t, ta.Store.SaveUser(&mockUser))

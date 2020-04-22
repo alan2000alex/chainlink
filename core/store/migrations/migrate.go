@@ -207,6 +207,7 @@ func init() {
 
 // GORMMigrate calls through to gorm's native migrate function with minimal
 // extra logic
+// Useful if the migrations table doesn't exist yet but we don't care
 func GORMMigrate(db *gorm.DB) error {
 	options := *gormigrate.DefaultOptions
 	options.UseTransaction = true
