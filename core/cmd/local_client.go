@@ -350,7 +350,7 @@ func migrateTestDB(config *orm.Config) error {
 	}
 	orm.SetLogging(config.LogSQLStatements() || config.LogSQLMigrations())
 	err = orm.RawDB(func(db *gorm.DB) error {
-		return migrations.Migrate(db)
+		return migrations.GORMMigrate(db)
 	})
 	if err != nil {
 		return fmt.Errorf("migrateTestDB failed: %v", err)
