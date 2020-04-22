@@ -48,12 +48,22 @@ type logBroadcaster struct {
 
 	chStop chan struct{}
 	chDone chan struct{}
+
+	// TODO - RYAN
+	// chLogConsumptions chan struct{}
 }
 
 type registration struct {
 	address  common.Address
 	listener LogListener
+	// unique idintifier
 }
+
+// TODO - RYAN
+// type logConsumption struct {
+// 	log eth.Log
+// 	listener LogListener
+// }
 
 type ManagedSubscription interface {
 	Err() <-chan error
@@ -243,6 +253,10 @@ func (b *logBroadcaster) process(subscription eth.Subscription, chRawLogs <-chan
 		case rawLog := <-chRawLogs:
 			b.onRawLog(rawLog)
 
+			// TODO - RYAN
+			// case logConsumption := <-chLogConsumptions:
+			// b.onLogConsumption(logConsumption)
+
 		case r := <-b.chAddListener:
 			needsResubscribe = b.onAddListener(r) || needsResubscribe
 
@@ -264,7 +278,9 @@ func (b *logBroadcaster) process(subscription eth.Subscription, chRawLogs <-chan
 }
 
 func (b *logBroadcaster) onRawLog(rawLog eth.Log) {
+	// TODO - RYAN
 	// Skip logs that we've already seen
+	// delete this
 	if b.cursor.Initialized &&
 		(rawLog.BlockNumber < b.cursor.BlockIndex ||
 			(rawLog.BlockNumber == b.cursor.BlockIndex && uint64(rawLog.Index) <= b.cursor.LogIndex)) {
@@ -274,10 +290,19 @@ func (b *logBroadcaster) onRawLog(rawLog eth.Log) {
 	for listener := range b.listeners[rawLog.Address] {
 		// Make a copy of the log for each listener to avoid data races
 		listener.HandleLog(rawLog.Copy(), nil)
+		// warning, n+1
+		// if !orm.hasProcessedLog(rawLog, listener) {
+		// listener.HandleLog(rawLog.Copy(), b.chLogConsumptions, nil)
+		// }
 	}
 
 	b.updateLogCursor(rawLog.BlockNumber, uint64(rawLog.Index))
 }
+
+// TODO - RYAN
+// func (b *logBroadcaster) onLogConsumption() error {
+// 	b.orm.CreateLogConsumption()
+// }
 
 func (b *logBroadcaster) onAddListener(r registration) (needsResubscribe bool) {
 	_, knownAddress := b.listeners[r.address]
@@ -366,6 +391,7 @@ func NewDecodingLogListener(codec eth.ContractCodec, nativeLogTypes map[common.H
 	}
 }
 
+// TODO - RYAN add channel as arg
 func (l *decodingLogListener) HandleLog(log interface{}, err error) {
 	if err != nil {
 		l.LogListener.HandleLog(nil, err)
