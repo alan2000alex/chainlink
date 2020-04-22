@@ -2,6 +2,9 @@ package cltest
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink/core/eth"
@@ -27,6 +30,20 @@ func MustHelloWorldAgreement(t *testing.T, oracleAddress gethCommon.Address) str
 	}
 	return string(sa)
 
+}
+
+func CreateCredsFile(t *testing.T, user models.User) (string, func()) {
+	credsFile, err := ioutil.TempFile(os.TempDir(), "apicredentials-")
+	if err != nil {
+		t.Fatal("Cannot create temporary file", err)
+	}
+	creds := []byte(fmt.Sprintf("%s\n%s", user.Email, Password))
+	if _, err = credsFile.Write(creds); err != nil {
+		t.Fatal("Failed to write to temporary file", err)
+	}
+	return credsFile.Name(), func() {
+		os.Remove(credsFile.Name())
+	}
 }
 
 // FixtureCreateJobViaWeb creates a job from a fixture using /v2/specs

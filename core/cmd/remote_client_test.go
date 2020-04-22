@@ -173,7 +173,7 @@ func TestClient_CreateServiceAgreement(t *testing.T) {
 
 	client, _ := app.NewClientAndRenderer()
 
-	sa := string(cltest.MustReadFile(t, "testdata/hello_world_agreement.json"))
+	sa := cltest.MustHelloWorldAgreement(t, app.Account.Address)
 	endAtISO8601 := EndAt.Format(time.RFC3339)
 	sa = strings.Replace(sa, "2019-10-19T22:17:19Z", endAtISO8601, 1)
 	tmpFile, err := ioutil.TempFile("", "sa.*.json")
@@ -575,17 +575,20 @@ func TestClient_RemoteLogin(t *testing.T) {
 	app, cleanup := cltest.NewApplication(t, cltest.EthMockRegisterChainID)
 	defer cleanup()
 	require.NoError(t, app.Start())
+	user := cltest.MustUser(app.Config.AdvisoryLockID)
+	credsFilePath, credsCleanup := cltest.CreateCredsFile(t, user)
+	defer credsCleanup()
 
 	tests := []struct {
 		name, file string
 		email, pwd string
 		wantError  bool
 	}{
-		{"success prompt", "", cltest.APIEmail, cltest.Password, false},
-		{"success file", "../internal/fixtures/apicredentials", "", "", false},
+		{"success prompt", "", user.Email, cltest.Password, false},
+		{"success file", credsFilePath, "", "", false},
 		{"failure prompt", "", "wrong@email.com", "wrongpwd", true},
 		{"failure file", "/tmp/doesntexist", "", "", true},
-		{"failure file w correct prompt", "/tmp/doesntexist", cltest.APIEmail, cltest.Password, true},
+		{"failure file w correct prompt", "/tmp/doesntexist", user.Email, cltest.Password, true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -735,20 +738,25 @@ func TestClient_ChangePassword(t *testing.T) {
 	defer cleanup()
 	require.NoError(t, app.Start())
 
-	enteredStrings := []string{cltest.APIEmail, cltest.Password}
+	enteredStrings := []string{"email@test.net", cltest.Password}
 	prompter := &cltest.MockCountingPrompter{EnteredStrings: enteredStrings}
 
 	client := app.NewAuthenticatingClient(prompter)
 	otherClient := app.NewAuthenticatingClient(prompter)
 
+	// TODO: Probably need to abstract this, save ID or user onto test application or something
+	user := cltest.MustUser(app.Config.AdvisoryLockID)
+	credsFilePath, credsCleanup := cltest.CreateCredsFile(t, user)
+	defer credsCleanup()
+
 	set := flag.NewFlagSet("test", 0)
-	set.String("file", "../internal/fixtures/apicredentials", "")
+	set.String("file", credsFilePath, "")
 	c := cli.NewContext(nil, set, nil)
 	err := client.RemoteLogin(c)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = otherClient.RemoteLogin(c)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	client.ChangePasswordPrompter = cltest.MockChangePasswordPrompter{
 		ChangePasswordRequest: models.ChangePasswordRequest{

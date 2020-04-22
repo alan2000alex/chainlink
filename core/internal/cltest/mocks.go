@@ -686,6 +686,10 @@ func (ns NeverSleeper) After() time.Duration { return 0 * time.Microsecond }
 // Duration returns a duration
 func (ns NeverSleeper) Duration() time.Duration { return 0 * time.Microsecond }
 
+func MustRandomUser() models.User {
+	return MustUser(NewRandomInt64())
+}
+
 func MustUser(id int64) models.User {
 	email := APIEmail(id)
 	r, err := models.NewUser(email, Password)
