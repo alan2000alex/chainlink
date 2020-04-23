@@ -343,7 +343,7 @@ type PollingDeviationChecker struct {
 	reportableRoundID          *big.Int
 	mostRecentSubmittedRoundID uint64
 	pollTicker                 *ResettableTicker
-	idleTicker                 <-chan time.Time
+	idleTimer                  <-chan time.Time
 	roundTimeoutTicker         <-chan time.Time
 
 	chStop     chan struct{}
@@ -378,7 +378,7 @@ func NewPollingDeviationChecker(
 		runManager:         runManager,
 		fetcher:            fetcher,
 		pollTicker:         NewResettableTicker(pollDelay),
-		idleTicker:         nil,
+		idleTimer:          nil,
 		roundTimeoutTicker: nil,
 		connected:          abool.New(),
 		chMaybeLogs:        make(chan maybeLog, 100),
@@ -472,7 +472,7 @@ func (p *PollingDeviationChecker) consume() {
 	defer p.pollTicker.Stop()
 
 	if !p.idleThreshold.IsInstant() {
-		p.idleTicker = time.After(p.idleThreshold.Duration())
+		p.idleTimer = time.After(p.idleThreshold.Duration())
 	}
 
 	for {
@@ -497,8 +497,8 @@ func (p *PollingDeviationChecker) consume() {
 			)
 			p.pollIfEligible(p.threshold)
 
-		case <-p.idleTicker:
-			logger.Debugw("Idle ticker fired",
+		case <-p.idleTimer:
+			logger.Debugw("Idle timer fired",
 				"pollDelay", p.pollTicker.d,
 				"idleThreshold", p.idleThreshold,
 				"mostRecentSubmittedRoundID", p.mostRecentSubmittedRoundID,
@@ -590,9 +590,15 @@ func (p *PollingDeviationChecker) respondToAnswerUpdatedLog(log *contracts.LogAn
 //
 // Only invoked by the CSP consumer on the single goroutine for thread safety.
 func (p *PollingDeviationChecker) respondToNewRoundLog(log *contracts.LogNewRound) {
-	// The idleThreshold resets when a new round starts
+	// The idleTimer resets when a new round starts
 	if !p.idleThreshold.IsInstant() {
-		p.idleTicker = time.After(p.idleThreshold.Duration())
+		p.idleTimer = MakeNewRoundIdleTimer(log, p.idleThreshold, realClock{})
+		select {
+		case <-p.idleTimer:
+			// TODO: How to handle immediately expired timer here?
+		default:
+			// pass
+		}
 	}
 
 	jobSpecID := p.initr.JobSpecID.String()
@@ -878,3 +884,44 @@ func OutsideDeviation(curAnswer, nextAnswer decimal.Decimal, threshold float64) 
 	logger.Infow("Deviation threshold met", loggerFields...)
 	return true
 }
+
+const pathologicalSkew = 30 * time.Second
+
+func MakeNewRoundIdleTimer(log *contracts.LogNewRound, idleThreshold models.Duration, clock Clock) <-chan time.Time {
+	timeNow := clock.Now()
+	var roundStarted time.Time
+	if log.StartedAt.IsInt64() {
+		roundStarted = time.Unix(log.StartedAt.Int64(), 0)
+	} else {
+		logger.Errorf("value for log.StartedAt %s would overflow int64, ignoring system clock and setting idle timer to max duration of %s", log.StartedAt.String(), idleThreshold.Duration())
+		return clock.After(idleThreshold.Duration())
+	}
+	if roundStarted.After(timeNow) {
+		logger.Warnf("round started time of %s is later than current system time of %s, ignoring system clock and setting idle timer to max duration of %s. This machine probably has a slow clock", roundStarted.String(), timeNow.String(), idleThreshold.Duration().String())
+		return clock.After(idleThreshold.Duration())
+	}
+	if timeNow.Sub(roundStarted) > pathologicalSkew {
+		logger.Warnf("current system time %s is much later than block timestamp of %s. Either you are processing an old round, or this machine has a fast clock", timeNow.String(), roundStarted.String())
+	}
+	// duration from now until idle threshold = log timestamp + idle threshold - current time
+	timeNow = clock.Now()
+	durationUntilIdleThreshold := roundStarted.Add(idleThreshold.Duration()).Sub(timeNow)
+	if durationUntilIdleThreshold < 0 {
+		logger.Warnf("idle threshold already passed, current time is %s and idle timer expired at %s", timeNow, roundStarted.Add(idleThreshold.Duration()).String())
+		expired := make(chan time.Time, 1)
+		expired <- roundStarted.Add(idleThreshold.Duration())
+		return expired
+	}
+	return clock.After(durationUntilIdleThreshold)
+}
+
+//go:generate mockery -name Clock -output ../../internal/mocks/ -case=underscore
+type Clock interface {
+	Now() time.Time
+	After(d time.Duration) <-chan time.Time
+}
+
+type realClock struct{}
+
+func (realClock) Now() time.Time                         { return time.Now() }
+func (realClock) After(d time.Duration) <-chan time.Time { return time.After(d) }

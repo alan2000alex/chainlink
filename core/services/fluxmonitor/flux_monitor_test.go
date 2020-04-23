@@ -350,6 +350,96 @@ func TestPollingDeviationChecker_TriggerIdleTimeThreshold(t *testing.T) {
 	}
 }
 
+func TestFluxMonitor_MakeNewRoundIdleTimer_RoundStartedAtIsInPast(t *testing.T) {
+	// We want to err on the side of the shorter idle timeout, so if round started at is in the past
+	// we trust the local clock and adjust the idle timeout down to assume it started counting from
+	// round startedAt in terms of our local clock
+	t.Parallel()
+
+	log := contracts.LogNewRound{StartedAt: big.NewInt(10)}
+	idleThreshold, err := models.MakeDuration(5 * time.Second)
+	require.NoError(t, err)
+	clock := new(mocks.Clock)
+
+	clock.On("Now").Twice().Return(time.Unix(11, 0))
+
+	timerChannel := make(<-chan time.Time)
+	clock.On("After", 4*time.Second).Return(timerChannel)
+
+	idleTimer := fluxmonitor.MakeNewRoundIdleTimer(&log, idleThreshold, clock)
+
+	assert.Equal(t, timerChannel, idleTimer)
+
+	clock.AssertExpectations(t)
+}
+
+func TestFluxMonitor_MakeNewRoundIdleTimer_IdleThresholdAlreadyPassed(t *testing.T) {
+	// If idle threshold is already passed, node should trigger a new round immediately
+	t.Parallel()
+
+	log := contracts.LogNewRound{StartedAt: big.NewInt(10)}
+	idleThreshold, err := models.MakeDuration(5 * time.Second)
+	require.NoError(t, err)
+	clock := new(mocks.Clock)
+
+	clock.On("Now").Twice().Return(time.Unix(42, 0))
+
+	idleTimer := fluxmonitor.MakeNewRoundIdleTimer(&log, idleThreshold, clock)
+
+	select {
+	case expiredTime := <-idleTimer:
+		assert.Equal(t, expiredTime, time.Unix(15, 0))
+	default:
+		t.Fatal("expected idleTimer channel to have the expiry time immediately")
+	}
+
+	clock.AssertExpectations(t)
+}
+
+func TestFluxMonitor_MakeNewRoundIdleTimer_OutOfBoundsStartedAt(t *testing.T) {
+	// If idle threshold is out of bounds (should never happen!) simply ignore
+	// it and wait exactly the idle threshold
+	t.Parallel()
+
+	var startedAt big.Int
+	startedAt.SetUint64(math.MaxUint64)
+	log := contracts.LogNewRound{StartedAt: &startedAt}
+	idleThreshold, err := models.MakeDuration(5 * time.Second)
+	require.NoError(t, err)
+	clock := new(mocks.Clock)
+
+	clock.On("Now").Return(time.Unix(11, 0))
+	timerChannel := make(<-chan time.Time)
+	clock.On("After", idleThreshold.Duration()).Return(timerChannel)
+
+	idleTimer := fluxmonitor.MakeNewRoundIdleTimer(&log, idleThreshold, clock)
+
+	assert.Equal(t, timerChannel, idleTimer)
+
+	clock.AssertExpectations(t)
+}
+
+func TestFluxMonitor_MakeNewRoundIdleTimer_RoundStartedAtIsInFuture(t *testing.T) {
+	// If local time is skewed backwards, we should not attempt to use it for
+	// calculating expiry time and instead wait exactly the idle threshold
+	t.Parallel()
+
+	log := contracts.LogNewRound{StartedAt: big.NewInt(40)}
+	idleThreshold, err := models.MakeDuration(42 * time.Second)
+	require.NoError(t, err)
+	clock := new(mocks.Clock)
+
+	clock.On("Now").Return(time.Unix(9, 0))
+	timerChannel := make(<-chan time.Time)
+	clock.On("After", idleThreshold.Duration()).Return(timerChannel)
+
+	idleTimer := fluxmonitor.MakeNewRoundIdleTimer(&log, idleThreshold, clock)
+
+	assert.Equal(t, timerChannel, idleTimer)
+
+	clock.AssertExpectations(t)
+}
+
 func TestPollingDeviationChecker_RoundTimeoutCausesPoll(t *testing.T) {
 	store, cleanup := cltest.NewStore(t)
 	defer cleanup()
